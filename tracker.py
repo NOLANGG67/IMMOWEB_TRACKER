@@ -13,13 +13,11 @@ FICHIER_CSV = "locations_bruxelles.csv"
 def extraire_compteur(page, url):
     page.goto(url, wait_until="networkidle", timeout=60000)
     
-    # Fermer la fenêtre des cookies si elle apparaît
     try:
         page.locator("#uc-btn-accept-banner").click(timeout=4000)
     except:
         pass
 
-    # Lire tout le texte de la page et repérer le chiffre devant le mot "résultat"
     texte_page = page.inner_text("body")
     match = re.search(r"([\d\s\u202f]+)\s+résultat", texte_page)
     if match:
@@ -36,7 +34,7 @@ def lancer_releve():
         page = context.new_page()
 
         nb_apparts = extraire_compteur(page, URLS["appartements"])
-        time.sleep(3) # Petite pause de 3 secondes pour rester discret
+        time.sleep(3)
         nb_maisons = extraire_compteur(page, URLS["maisons"])
 
         browser.close()
@@ -48,13 +46,14 @@ def sauvegarder_donnee(apparts, maisons):
     heure_str = maintenant.strftime("%H:%M:%S")
     total = (apparts or 0) + (maisons or 0)
 
-    fichier_existe = False
+    # Vérifie si le fichier existe déjà pour savoir s'il faut écrire l'en-tête
     try:
-        with open(FICHIER_CSV, "r"):
+        with open(FICHIER_CSV, "r", encoding="utf-8") as f:
             fichier_existe = True
     except FileNotFoundError:
-        pass
+        fichier_existe = False
 
+    # Ouvre le fichier en mode ajout ('a'), le crée s'il n'existe pas
     with open(FICHIER_CSV, mode="a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if not fichier_existe:
