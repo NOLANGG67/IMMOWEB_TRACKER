@@ -2,8 +2,8 @@ name: Suivi Immoweb Bruxelles
 
 on:
   schedule:
-    - cron: '0 7 * * *' # Exécution tous les jours à 7h00 UTC (8h00 en hiver / 9h00 en été en Belgique)
-  workflow_dispatch: # Permet de lancer un test manuellement en un clic
+    - cron: '0 7 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -28,10 +28,8 @@ jobs:
       - name: Lancer le relevé Immoweb
         run: python tracker.py
 
-      - name: Sauvegarder les résultats dans le tableau CSV
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add locations_bruxelles.csv
-          git commit -m "Ajout du relevé quotidien" || exit 0
-          git push
+      - name: Sauvegarder automatiquement dans le dépôt
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Mise à jour quotidienne des annonces Immoweb"
+          file_pattern: locations_bruxelles.csv
