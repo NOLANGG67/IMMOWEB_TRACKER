@@ -11,18 +11,36 @@ URLS = {
 FICHIER_CSV = "locations_bruxelles.csv"
 
 def extraire_compteur(page, url):
-    page.goto(url, wait_until="networkidle", timeout=60000)
+    page.goto(url, wait_until="domcontentloaded", timeout=60000)
     
+    # Accepter les cookies si la bannière apparaît
     try:
-        page.locator("#uc-btn-accept-banner").click(timeout=4000)
+        page.locator("button#uc-btn-accept-banner").click(timeout=5000)
     except:
         pass
 
+    time.sleep(3) # Laisser le temps au compteur dynamique de s'afficher
+
+    # Tentative 1 : Chercher via le sélecteur d'en-tête de résultats d'Immoweb
+    try:
+        element = page.locator("h1.search-results-cluster__title, .classifieds-count").first
+        texte = element.inner_text()
+        match = re.search(r"([\d\s\u202f]+)", texte)
+        if match:
+            nombre_propre = re.sub(r"[^\d]", "", match.group(1))
+            if nombre_propre:
+                return int(nombre_propre)
+    except:
+        pass
+
+    # Tentative 2 : Recherche de secours dans tout le texte de la page
     texte_page = page.inner_text("body")
-    match = re.search(r"([\d\s\u202f]+)\s+résultat", texte_page)
+    match = re.search(r"([\d\s\u202f]+)\s+(?:résultat|bien)", texte_page, re.IGNORECASE)
     if match:
         nombre_propre = re.sub(r"[^\d]", "", match.group(1))
-        return int(nombre_propre)
+        if nombre_propre:
+            return int(nombre_propre)
+            
     return None
 
 def lancer_releve():
@@ -46,14 +64,12 @@ def sauvegarder_donnee(apparts, maisons):
     heure_str = maintenant.strftime("%H:%M:%S")
     total = (apparts or 0) + (maisons or 0)
 
-    # Vérifie si le fichier existe déjà pour savoir s'il faut écrire l'en-tête
     try:
         with open(FICHIER_CSV, "r", encoding="utf-8") as f:
             fichier_existe = True
     except FileNotFoundError:
         fichier_existe = False
 
-    # Ouvre le fichier en mode ajout ('a'), le crée s'il n'existe pas
     with open(FICHIER_CSV, mode="a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if not fichier_existe:
@@ -62,8 +78,9 @@ def sauvegarder_donnee(apparts, maisons):
 
 if __name__ == "__main__":
     apparts, maisons = lancer_releve()
+    print(f"Résultats lus -> Appartements: {apparts}, Maisons: {maisons}")
     if apparts is not None or maisons is not None:
         sauvegarder_donnee(apparts, maisons)
-        print(f"Succès : {apparts} appartements et {maisons} maisons enregistrés.")
+        print("Succès : Données enregistrées dans le CSV.")
     else:
         print("Erreur : impossible de lire les compteurs.")
